@@ -37,6 +37,7 @@ ENCODING_SIZE_NAMES = [
 
 # A rectangle
 Rect = namedtuple('Rect', 'left top width height')
+Rect2 = namedtuple('Rect', 'x00 y00 x01 y01 x10 y10 x11 y11')
 
 # Results of reading a barcode
 Decoded = namedtuple('Decoded', 'data rect')
@@ -160,18 +161,26 @@ def _decode_region(decoder, region, corrections, shrink):
             # Coordinates
             p00 = DmtxVector2()
             p11 = DmtxVector2(1.0, 1.0)
-            dmtxMatrix3VMultiplyBy(
-                p00,
-                region.contents.fit2raw
-            )
+            p10 = DmtxVector2(1.0, 0.0)
+            p01 = DmtxVector2(0.0, 1.0)
+            dmtxMatrix3VMultiplyBy(p00, region.contents.fit2raw)
             dmtxMatrix3VMultiplyBy(p11, region.contents.fit2raw)
-            x0 = int((shrink * p00.X) + 0.5)
-            y0 = int((shrink * p00.Y) + 0.5)
-            x1 = int((shrink * p11.X) + 0.5)
-            y1 = int((shrink * p11.Y) + 0.5)
+            dmtxMatrix3VMultiplyBy(p01, region.contents.fit2raw)
+            dmtxMatrix3VMultiplyBy(p10, region.contents.fit2raw)
+            x00 = (shrink * p00.X) 
+            y00 = (shrink * p00.Y) 
+            x11 = (shrink * p11.X) 
+            y11 = (shrink * p11.Y) 
+            x10 = (shrink * p10.X) 
+            y10 = (shrink * p10.Y) 
+            x01 = (shrink * p01.X) 
+            y01 = (shrink * p01.Y) 
+            #print(Rect(x0, y0, x1 - x0, y1 - y0))
             return Decoded(
                 string_at(msg.contents.output),
-                Rect(x0, y0, x1 - x0, y1 - y0)
+                #Rect(x0, y0, x1 - x0, y1 - y0)
+                #Rect2 = namedtuple('Rect', 'x00 y00 x01 y01 x10 y10 x11 y11')
+                Rect2(x00,y00,x01,y01,x10,y10,x11,y11)
             )
         else:
             return None
@@ -204,8 +213,7 @@ def _pixel_data(image):
 
         # Check dimensions
         if 0 != len(pixels) % (width * height):
-            raise PyLibDMTXError(
-                (
+            raise PyLibDMTXError((
                     'Inconsistent dimensions: image data of {0} bytes is not '
                     'divisible by (width x height = {1})'
                 ).format(len(pixels), (width * height))
